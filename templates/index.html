@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Real-Time Chat</title>
+
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+
+    <!-- Chat Script -->
+    <script defer src="{{ url_for('static', path='chat.js') }}"></script>
+
+    <script>
+        let ws = null;
+        let username = "";
+
+        function connectWebSocket() {
+            username = document.getElementById("username").value.trim();
+            if (!username) {
+                alert("Please enter a name!");
+                return;
+            }
+
+            ws = new WebSocket(`ws://127.0.0.1:8000/ws/${username}`);
+
+            ws.onopen = function () {
+                document.getElementById("chatBox").innerHTML += `<div class="text-success text-center">✅ ${username} joined the chat!</div>`;
+                document.getElementById("userDisplay").textContent = username;
+                document.getElementById("message").disabled = false;
+                document.getElementById("sendButton").disabled = false;
+                document.getElementById("joinButton").style.display = "none";
+                document.getElementById("logoutButton").style.display = "block";
+            };
+
+            ws.onmessage = function (event) {
+                const data = event.data;
+                displayMessage(data);
+            };
+
+            ws.onclose = function () {
+                alert("Disconnected from chat.");
+                logout();
+            };
+        }
+
+        function sendMessage() {
+            let messageInput = document.getElementById("message");
+            let messageText = messageInput.value.trim();
+            if (!messageText || !ws) return;
+
+            const messageData = JSON.stringify({ user: username, message: messageText });
+            ws.send(messageData);
+            messageInput.value = "";
+        }
+
+        function displayMessage(message) {
+            const chatBox = document.getElementById("chatBox");
+            const messageDiv = document.createElement("div");
+
+            messageDiv.innerHTML = `<div class="p-2 bg-secondary text-white rounded mb-1">${message}</div>`;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function logout() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            document.getElementById("chatBox").innerHTML += `<div class="text-danger text-center">❌ ${username} left the chat!</div>`;
+            document.getElementById("userDisplay").textContent = "";
+            document.getElementById("username").disabled = false;
+            document.getElementById("message").disabled = true;
+            document.getElementById("sendButton").disabled = true;
+            document.getElementById("joinButton").style.display = "block";
+            document.getElementById("logoutButton").style.display = "none";
+        }
+    </script>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row">
+            <!-- Sidebar for User Input -->
+            <div class="col-md-3 bg-white p-3 border rounded shadow">
+                <h2 class="text-center">Chat App</h2>
+                <label for="username" class="form-label">Enter Your Name:</label>
+                <input id="username" type="text" class="form-control my-2" placeholder="Enter your name">
+                <button id="joinButton" class="btn btn-primary w-100" onclick="connectWebSocket()">Join</button>
+                <button id="logoutButton" class="btn btn-danger w-100 mt-2" onclick="logout()" style="display: none;">Logout</button>
+                <button class="btn btn-danger w-100 mt-2" onclick="disconnectWebSocket()">Leave Chat</button>
+
+            </div>
+
+            <!-- Chat Box -->
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <span id="chatRoomTitle">Chat Room</span> - <span id="userDisplay" class="fw-bold"></span>
+                    </div>
+                    <div class="card-body messages" id="chatBox" style="height: 300px; overflow-y: auto;"></div>
+                    <div class="card-footer">
+                        <div class="input-group">
+                           <input id="message" type="text" class="form-control" placeholder="Type a message" disabled>
+                            <button id="sendButton" class="btn btn-success" onclick="sendMessage()" disabled>Send</button>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
